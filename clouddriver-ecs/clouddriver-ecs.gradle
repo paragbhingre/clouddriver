@@ -37,4 +37,12 @@ dependencies {
   testImplementation "org.objenesis:objenesis"
   testImplementation "org.spockframework:spock-core"
   testImplementation "org.spockframework:spock-spring"
+
+  testImplementation project(":clouddriver-web")
+  testImplementation "org.springframework:spring-test"
+  testImplementation "org.testcontainers:mysql"
+  testImplementation "mysql:mysql-connector-java"
+  testImplementation ("io.rest-assured:rest-assured:4.0.0") {
+    exclude group: "org.codehaus.groovy", module: "groovy" // use kork's version
+  }
 }
