@@ -1,3 +1,19 @@
+sourceSets {
+  integration {
+    java {
+      srcDirs = ["src/integration/java"]
+    }
+    resources.srcDirs = ["src/integration/resources"]
+    compileClasspath += main.output + test.output
+    runtimeClasspath += main.output + test.output
+  }
+}
+
+configurations {
+  integrationImplementation.extendsFrom testImplementation
+  integrationRuntime.extendsFrom testRuntime
+}
+
 dependencies {
   implementation project(":cats:cats-core")
   implementation project(":clouddriver-api")
@@ -38,11 +54,16 @@ dependencies {
   testImplementation "org.spockframework:spock-core"
   testImplementation "org.spockframework:spock-spring"
 
-  testImplementation project(":clouddriver-web")
-  testImplementation "org.springframework:spring-test"
-  testImplementation "org.testcontainers:mysql"
-  testImplementation "mysql:mysql-connector-java"
-  testImplementation ("io.rest-assured:rest-assured:4.0.0") {
+  integrationImplementation project(":clouddriver-web")
+  integrationImplementation "org.springframework:spring-test"
+  integrationImplementation "org.testcontainers:mysql"
+  integrationImplementation "mysql:mysql-connector-java"
+  integrationImplementation ("io.rest-assured:rest-assured:4.0.0") {
     exclude group: "org.codehaus.groovy", module: "groovy" // use kork's version
   }
+}
+
+task integrationTest(type: Test) {
+  testClassesDirs = sourceSets.integration.output.classesDirs
+  classpath = sourceSets.integration.runtimeClasspath
 }

@@ -1,0 +1,8 @@
+{
+  "application": "ecs",
+  "stack": "integ-test-stack",
+  "credentials": "ecs-account",
+  "cloudProvider": "ecs",
+  "account": "ecs-my-aws-devel-acct",
+  "ecsClusterName": "spinnaker-deployment-cluster"
+}
