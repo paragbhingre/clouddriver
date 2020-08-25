@@ -138,7 +138,7 @@ public class EcsSpec {
   }
 
   @Test
-  public void createServiceOperationTest() throws IOException { // no response
+  public void createServerGroupOperationTest() throws IOException { // no response
     // given
     String url = getTestUrl("/ecs/ops");
     String requestBody = generateStringFromTestFile("/createServiceOperation.json");
@@ -165,7 +165,8 @@ public class EcsSpec {
   }
 
   private String generateStringFromTestFile(String path) throws IOException {
-    return new String(Files.readAllBytes(Paths.get("src/integration/resources/testoperations" + path)));
+    return new String(
+        Files.readAllBytes(Paths.get("src/integration/resources/testoperations" + path)));
   }
 
   private String getTestUrl(String path) {
