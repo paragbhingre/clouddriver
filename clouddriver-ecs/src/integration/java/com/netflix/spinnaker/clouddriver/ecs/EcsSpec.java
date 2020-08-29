@@ -20,24 +20,32 @@ import static io.restassured.RestAssured.given;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import com.netflix.spinnaker.cats.agent.DefaultCacheResult;
+import com.netflix.spinnaker.cats.cache.CacheData;
+import com.netflix.spinnaker.cats.cache.DefaultCacheData;
+import com.netflix.spinnaker.cats.provider.ProviderCache;
+import com.netflix.spinnaker.cats.provider.ProviderRegistry;
 import com.netflix.spinnaker.clouddriver.Main;
+import com.netflix.spinnaker.clouddriver.ecs.cache.Keys;
+import com.netflix.spinnaker.clouddriver.ecs.provider.EcsProvider;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.junit4.SpringRunner;
 
-// consider @WebMvcTest for slimmer runtime
-@RunWith(SpringJUnit4ClassRunner.class)
+@RunWith(SpringRunner.class)
 @SpringBootTest(
     classes = {Main.class},
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -73,11 +81,15 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 public class EcsSpec {
 
   private final Logger log = LoggerFactory.getLogger(getClass());
+  private final String ECS_ACCOUNT_NAME = "ecs-account";
+  private final String TEST_REGION = "us-west-2";
 
   @Value("${ecs.enabled}")
   Boolean ecsEnabled;
 
   @LocalServerPort private int port;
+
+  @Autowired private ProviderRegistry providerRegistry;
 
   @Test
   public void configTest() {
@@ -101,9 +113,36 @@ public class EcsSpec {
   }
 
   @Test
+  public void getEcsClustersTest() {
+    // given
+    ProviderCache ecsCache = providerRegistry.getProviderCache(EcsProvider.NAME);
+    String testClusterName = "spinnaker-deployment-cluster";
+    String testNamespace = Keys.Namespace.ECS_CLUSTERS.ns;
+
+    String clusterKey = Keys.getClusterKey(ECS_ACCOUNT_NAME, TEST_REGION, testClusterName);
+    Map<String, Object> attributes = new HashMap<>();
+    attributes.put("account", ECS_ACCOUNT_NAME);
+    attributes.put("region", TEST_REGION);
+    attributes.put("clusterArn", "arn:aws:ecs:::cluster/" + testClusterName);
+    attributes.put("clusterName", testClusterName);
+
+    DefaultCacheResult testResult = buildCacheResult(attributes, testNamespace, clusterKey);
+    ecsCache.addCacheResult("TestAgent", Collections.singletonList(testNamespace), testResult);
+
+    // when
+    String testUrl = getTestUrl("/ecs/ecsClusters");
+
+    Response response = get(testUrl).then().contentType(ContentType.JSON).extract().response();
+    log.info("CLUSTER CONTROLLER response: " + response.asString());
+
+    // then
+    assertNotNull(response); // TODO assert response contents matches cached cluster
+  }
+
+  @Test
   public void listLoadBalancersTest() {
     // given
-    String url = getTestUrl("/ecs/loadBalancers");
+    String url = getTestUrl("/aws/loadBalancers");
 
     // when
     Response response = get(url).then().contentType(ContentType.JSON).extract().response();
@@ -171,5 +210,16 @@ public class EcsSpec {
 
   private String getTestUrl(String path) {
     return "http://localhost:" + port + path;
+  }
+
+  private DefaultCacheResult buildCacheResult(
+      Map<String, Object> attributes, String namespace, String key) {
+    Collection<CacheData> dataPoints = new LinkedList<>();
+    dataPoints.add(new DefaultCacheData(key, attributes, Collections.emptyMap()));
+
+    Map<String, Collection<CacheData>> dataMap = new HashMap<>();
+    dataMap.put(namespace, dataPoints);
+
+    return new DefaultCacheResult(dataMap);
   }
 }
