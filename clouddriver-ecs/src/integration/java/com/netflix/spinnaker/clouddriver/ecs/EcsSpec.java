@@ -106,7 +106,8 @@ public class EcsSpec {
     String url = getTestUrl("/credentials");
 
     // when
-    Response response = get(url).then().contentType(ContentType.JSON).extract().response();
+    Response response =
+        get(url).then().statusCode(200).contentType(ContentType.JSON).extract().response();
     log.info(response.asString()); // returns 2 entries, aws-account & ecs-account
 
     // then
@@ -117,7 +118,7 @@ public class EcsSpec {
   public void getEcsClustersTest() {
     // given
     ProviderCache ecsCache = providerRegistry.getProviderCache(EcsProvider.NAME);
-    String testClusterName = "spinnaker-deployment-cluster";
+    String testClusterName = "integ-test-cluster";
     String testNamespace = Keys.Namespace.ECS_CLUSTERS.ns;
 
     String clusterKey = Keys.getClusterKey(ECS_ACCOUNT_NAME, TEST_REGION, testClusterName);
@@ -133,15 +134,20 @@ public class EcsSpec {
     // when
     String testUrl = getTestUrl("/ecs/ecsClusters");
 
-    Response response = get(testUrl).then().contentType(ContentType.JSON).extract().response();
-    log.info("CLUSTER CONTROLLER response: " + response.asString());
+    Response response =
+        get(testUrl).then().statusCode(200).contentType(ContentType.JSON).extract().response();
 
     // then
-    assertNotNull(response); // TODO assert response contents matches cached cluster
+    assertNotNull(response);
+    // TODO: serialize into expected return type to validate API contract hasn't changed
+    String responseStr = response.asString();
+    assertTrue(responseStr.contains(testClusterName));
+    assertTrue(responseStr.contains(ECS_ACCOUNT_NAME));
+    assertTrue(responseStr.contains(TEST_REGION));
   }
 
   @Test
-  public void listLoadBalancersTest() {
+  public void getLoadBalancersTest() {
     // given
     String url = getTestUrl("/aws/loadBalancers");
 
@@ -155,7 +161,7 @@ public class EcsSpec {
   }
 
   @Test
-  public void listServerGroupsTest() {
+  public void getServerGroupsTest() {
     // given
     String url = getTestUrl("/serverGroups");
 
@@ -167,6 +173,7 @@ public class EcsSpec {
             .when()
             .get(url)
             .then()
+            .statusCode(200)
             .contentType(ContentType.JSON)
             .extract()
             .response();
