@@ -81,6 +81,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 public class EcsSpec {
 
   private final Logger log = LoggerFactory.getLogger(getClass());
+  private static final String TEST_OPERATIONS_LOCATION = "src/integration/resources/testoperations";
   private final String ECS_ACCOUNT_NAME = "ecs-account";
   private final String TEST_REGION = "us-west-2";
 
@@ -204,8 +205,7 @@ public class EcsSpec {
   }
 
   private String generateStringFromTestFile(String path) throws IOException {
-    return new String(
-        Files.readAllBytes(Paths.get("src/integration/resources/testoperations" + path)));
+    return new String(Files.readAllBytes(Paths.get(TEST_OPERATIONS_LOCATION, path)));
   }
 
   private String getTestUrl(String path) {
