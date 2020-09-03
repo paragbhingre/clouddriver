@@ -22,14 +22,11 @@ aws:
   defaults:
     iamRole: BaseIAMRole
 ecs:
-  enbled: true
+  enabled: true
   primaryAccount: ecs-account
   accounts:
     - name: ecs-account
-      environment: null
-      requiredGroupMembership: []
       providerVersion: V1
-      permissions: {}
       awsAccount: aws-account
 sql:
   enabled: true

@@ -62,6 +62,8 @@ dependencies {
 }
 
 task integrationTest(type: Test) {
+  description = "Runs Amazon ECS provider integration tests."
+
   testClassesDirs = sourceSets.integration.output.classesDirs
   classpath = sourceSets.integration.runtimeClasspath
 }

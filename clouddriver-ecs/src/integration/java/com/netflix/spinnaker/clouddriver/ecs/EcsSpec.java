@@ -49,35 +49,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 @SpringBootTest(
     classes = {Main.class},
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@TestPropertySource(
-    properties = { // TODO put this in a file after confirming central locale
-      "spring.application.name = clouddriver",
-      "services.front50.baseUrl = http://front50.net",
-      "services.fiat.baseUrl = http://fiat.net",
-      "redis.enabled = false",
-      "sql.enabled = true",
-      "sql.taskRepository.enabled = true",
-      "sql.cache.enabled = true",
-      "sql.cache.readBatchSize = 500",
-      "sql.cache.writeBatchSize = 300",
-      "sql.scheduler.enabled = true",
-      "sql.connectionPools.default.default = true",
-      "sql.connectionPools.default.jdbcUrl = jdbc:tc:mysql:5.7.22://somehostname:someport/clouddriver?user=root?password=&",
-      "sql.connectionPools.tasks.jdbcUrl = jdbc:tc:mysql:5.7.22://somehostname:someport/clouddriver?user=root?password=&",
-      "sql.migration.jdbcUrl = jdbc:tc:mysql:5.7.22://somehostname:someport/clouddriver?user=root?password=&",
-      "aws.enabled = true",
-      "aws.primaryAccount = aws-account",
-      "aws.accounts[0].name = aws-account",
-      "aws.accounts[0].accountId = 679273379347", // TODO: mock this
-      "aws.accounts[0].regions[0].name = us-west-2",
-      "aws.accounts[0].assumeRole = role/SpinnakerManaged",
-      "aws.defaultRegions[0].name = us-west-2",
-      "aws.defaults.iamRole = BaseIAMRole",
-      "ecs.enabled = true",
-      "ecs.primaryAccount = ecs-account",
-      "ecs.accounts[0].name = ecs-account",
-      "ecs.accounts[0].awsAccount = aws-account"
-    })
+@TestPropertySource(properties = {"spring.config.location = classpath:clouddriver.yml"})
 public class EcsSpec {
 
   private final Logger log = LoggerFactory.getLogger(getClass());
