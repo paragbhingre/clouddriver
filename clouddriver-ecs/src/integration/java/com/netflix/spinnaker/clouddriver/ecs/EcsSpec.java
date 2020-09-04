@@ -19,15 +19,22 @@ import static io.restassured.RestAssured.get;
 import static io.restassured.RestAssured.given;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 import com.netflix.spinnaker.cats.agent.DefaultCacheResult;
 import com.netflix.spinnaker.cats.cache.CacheData;
 import com.netflix.spinnaker.cats.cache.DefaultCacheData;
+import com.netflix.spinnaker.cats.module.CatsModule;
 import com.netflix.spinnaker.cats.provider.ProviderCache;
 import com.netflix.spinnaker.cats.provider.ProviderRegistry;
 import com.netflix.spinnaker.clouddriver.Main;
+import com.netflix.spinnaker.clouddriver.aws.security.*;
+import com.netflix.spinnaker.clouddriver.aws.security.config.CredentialsConfig;
+import com.netflix.spinnaker.clouddriver.aws.security.config.CredentialsLoader;
 import com.netflix.spinnaker.clouddriver.ecs.cache.Keys;
 import com.netflix.spinnaker.clouddriver.ecs.provider.EcsProvider;
+import com.netflix.spinnaker.clouddriver.security.AccountCredentialsRepository;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import java.io.IOException;
@@ -35,12 +42,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -64,13 +73,29 @@ public class EcsSpec {
 
   @Autowired private ProviderRegistry providerRegistry;
 
+  @MockBean AmazonClientProvider mockAwsProvider;
+
+  @MockBean AmazonAccountsSynchronizer mockAccountsSyncer;
+
+  @BeforeEach
+  void Setup() {
+    NetflixAmazonCredentials mockNetflixAwsCreds = mock(NetflixAmazonCredentials.class);
+    when(mockAccountsSyncer.synchronize(
+            any(CredentialsLoader.class),
+            any(CredentialsConfig.class),
+            any(AccountCredentialsRepository.class),
+            any(DefaultAccountConfigurationProperties.class),
+            any(CatsModule.class)))
+        .thenReturn(Collections.singletonList(mockNetflixAwsCreds));
+  }
+
   @Test
   public void configTest() {
     log.info("This is the port test! The PORT is {}", port);
     assertTrue(ecsEnabled);
   }
 
-  // TODO set up cached values, debug /ops, remove info logs
+  // TODO debug /ops, remove info logs
 
   @Test
   public void listCredentialsTest() {
