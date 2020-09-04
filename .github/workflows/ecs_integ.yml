@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - ecs-integ
+      - ecs-integ-test
 
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Xmx6g -Xms6g
