@@ -43,4 +43,4 @@ jobs:
         run: ./gradlew -PenableCrossCompilerPlugin=true build --stacktrace
 
       - name: ECS Integ test run
-        run: ./gradlew :clouddriver-ecs:integrationTest
+        run: ./gradlew --info integrationTest

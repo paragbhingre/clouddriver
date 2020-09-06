@@ -63,7 +63,12 @@ dependencies {
 
 task integrationTest(type: Test) {
   description = "Runs Amazon ECS provider integration tests."
+  group = 'verification'
+
+  environment "PROJECT_ROOT", project.rootDir.toString()
+  useJUnitPlatform()
 
   testClassesDirs = sourceSets.integration.output.classesDirs
   classpath = sourceSets.integration.runtimeClasspath
+  shouldRunAfter test
 }
