@@ -208,6 +208,79 @@ public class EcsSpec {
     assertNotNull(response); // TODO inspect response contents
   }
 
+  @Test
+  public void getServiceDiscoveryRegistriesTest() {
+    // given
+    ProviderCache ecsCache = providerRegistry.getProviderCache(EcsProvider.NAME);
+    String testClusterName = "spinnaker-deployment-cluster";
+    String testNamespace = Keys.Namespace.SERVICE_DISCOVERY_REGISTRIES.ns;
+    String clusterKey = Keys.getClusterKey(ECS_ACCOUNT_NAME, TEST_REGION, testClusterName);
+    String url = getTestUrl("/ecs/serviceDiscoveryRegistries");
+    Map<String, Object> attributes = new HashMap<>();
+    attributes.put("account", ECS_ACCOUNT_NAME);
+    attributes.put("region", TEST_REGION);
+    attributes.put("serviceName", "spinnaker-demo");
+    attributes.put("serviceId", "srv-v001");
+    attributes.put(
+        "serviceArn",
+        "arn:aws:servicediscovery:region:aws_account_id:service/srv-utcrh6wavdkggqtk");
+
+    DefaultCacheResult testResult = buildCacheResult(attributes, testNamespace, clusterKey);
+    ecsCache.addCacheResult("TestAgent", Collections.singletonList(testNamespace), testResult);
+
+    // when
+    Response response = get(url).then().contentType(ContentType.JSON).extract().response();
+    log.info("SERVICE REGISTRY RESPONSE: " + response.asString());
+
+    // then
+    assertNotNull(response); // inspect response contents
+
+    // serialize into expected return type to validate API contract hasn't changed
+    String responseStr = response.asString();
+    assertTrue(responseStr.contains(ECS_ACCOUNT_NAME));
+    assertTrue(responseStr.contains(TEST_REGION));
+    assertTrue(responseStr.contains("spinnaker-demo"));
+    assertTrue(responseStr.contains("srv-v001"));
+    assertTrue(
+        responseStr.contains(
+            "arn:aws:servicediscovery:region:aws_account_id:service/srv-utcrh6wavdkggqtk"));
+  }
+
+  @Test
+  public void getEcsSecretsTest() {
+    // given
+    ProviderCache ecsCache = providerRegistry.getProviderCache(EcsProvider.NAME);
+    String testClusterName = "spinnaker-deployment-cluster";
+    String testNamespace = Keys.Namespace.SECRETS.ns;
+    String clusterKey = Keys.getClusterKey(ECS_ACCOUNT_NAME, TEST_REGION, testClusterName);
+    String url = getTestUrl("/ecs/secrets");
+    Map<String, Object> attributes = new HashMap<>();
+    attributes.put("account", ECS_ACCOUNT_NAME);
+    attributes.put("region", TEST_REGION);
+    attributes.put("secretName", "tut/secret");
+    attributes.put(
+        "secretArn", "arn:aws:secretsmanager:region:aws_account_id:secret:tut/sevret-jiObOV");
+
+    DefaultCacheResult testResult = buildCacheResult(attributes, testNamespace, clusterKey);
+    ecsCache.addCacheResult("TestAgent", Collections.singletonList(testNamespace), testResult);
+
+    // when
+    Response response = get(url).then().contentType(ContentType.JSON).extract().response();
+    log.info("ECS SECRET RESPONSE: " + response.asString());
+
+    // then
+    assertNotNull(response); // inspect response contents
+
+    // serialize into expected return type to validate API contract hasn't changed
+    String responseStr = response.asString();
+    assertTrue(responseStr.contains(ECS_ACCOUNT_NAME));
+    assertTrue(responseStr.contains(TEST_REGION));
+    assertTrue(responseStr.contains("tut/secret"));
+    assertTrue(
+        responseStr.contains(
+            "arn:aws:secretsmanager:region:aws_account_id:secret:tut/sevret-jiObOV"));
+  }
+
   private String generateStringFromTestFile(String path) throws IOException {
     return new String(Files.readAllBytes(Paths.get(TEST_OPERATIONS_LOCATION, path)));
   }
