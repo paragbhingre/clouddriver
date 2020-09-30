@@ -39,7 +39,7 @@ public class CreateServerGroupSpec extends EcsSpec {
 
   @Autowired AccountCredentialsRepository accountCredentialsRepository;
 
-  String path = "/ecs/ops/createServerGroup";
+  private static final String CREATE_SG_TEST_PATH = "/ecs/ops/createServerGroup";
 
   @DisplayName(
       ".\n===\n"
@@ -50,7 +50,7 @@ public class CreateServerGroupSpec extends EcsSpec {
   public void createServerGroupOperationTest() throws IOException {
 
     // given
-    String url = getTestUrl(path);
+    String url = getTestUrl(CREATE_SG_TEST_PATH);
     String requestBody = generateStringFromTestFile("/createServerGroup-inputs-ec2.json");
     setEcsAccountCreds();
 
@@ -77,7 +77,7 @@ public class CreateServerGroupSpec extends EcsSpec {
   public void createSGOWithInputsFargateLegacyTargetGroupTest() throws IOException {
 
     // given
-    String url = getTestUrl(path);
+    String url = getTestUrl(CREATE_SG_TEST_PATH);
     String requestBody =
         generateStringFromTestFile(
             "/createServerGroupOperation-inputs-fargate-legacyTargetGroup.json");
@@ -107,7 +107,7 @@ public class CreateServerGroupSpec extends EcsSpec {
   public void createSGOWithInputsFargateNewTargetGroupMappingsTest() throws IOException {
 
     // given
-    String url = getTestUrl(path);
+    String url = getTestUrl(CREATE_SG_TEST_PATH);
     String requestBody =
         generateStringFromTestFile(
             "/createServerGroupOperation-inputs-fargate-targetGroupMappings.json");
