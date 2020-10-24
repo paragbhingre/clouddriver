@@ -319,4 +319,65 @@ public class CreateServerGroupWithArtifactsSpec extends EcsSpec {
     assertEquals(80, serviceLB.getContainerPort().intValue());
     assertEquals("integArtifactsFargateTgMappings-cluster", seenCreateServRequest.getCluster());
   }
+
+  @DisplayName(
+      ".\n===\n"
+          + "Given description w/ task def artifacts, EC2 launch type, and new target group fields "
+          + "without container definition, gives an exception(Provided task definition does not contain any container definitions). "
+          + "\n===")
+  @Test
+  public void createServerGroup_ArtifactsEC2TgMappingsWithNoContainersTest()
+      throws IOException, InterruptedException {
+
+    // given
+    String url = getTestUrl(CREATE_SG_TEST_PATH);
+    String requestBody =
+        generateStringFromTestFile("/createServerGroup-artifact-EC2-targetGroupMappings.json");
+    String expectedServerGroupName = "ecs-integArtifactsEC2TgMappingsStack-detailTest";
+
+    setEcsAccountCreds();
+
+    ByteArrayInputStream byteArrayInputStreamOfArtifactsForEC2Type =
+        new ByteArrayInputStream(
+            generateStringFromTestArtifactFile(
+                    "createServerGroup-artifact-EC2-targetGroup-WithNoContainers-artifactFile.json")
+                .getBytes());
+
+    when(mockArtifactDownloader.download(any(Artifact.class)))
+        .thenReturn(byteArrayInputStreamOfArtifactsForEC2Type);
+
+    String taskId =
+        given()
+            .contentType(ContentType.JSON)
+            .body(requestBody)
+            .when()
+            .post(url)
+            .then()
+            .statusCode(200)
+            .contentType(ContentType.JSON)
+            .body("id", notNullValue())
+            .body("resourceUri", containsString("/task/"))
+            .extract()
+            .path("id");
+
+    retryUntilTrue(
+        () -> {
+          List<Object> taskHistory =
+              get(getTestUrl("/task/" + taskId))
+                  .then()
+                  .contentType(ContentType.JSON)
+                  .extract()
+                  .path("history");
+          if (taskHistory
+              .toString()
+              .contains(
+                  String.format(
+                      "Provided task definition does not contain any container definitions"))) {
+            return true;
+          }
+          return false;
+        },
+        String.format("Failed to detect service creation in %s seconds", TASK_RETRY_SECONDS),
+        TASK_RETRY_SECONDS);
+  }
 }
