@@ -367,12 +367,7 @@ public class CreateServerGroupWithArtifactsSpec extends EcsSpec {
                   .contentType(ContentType.JSON)
                   .extract()
                   .path("status");
-          assertEquals(
-              true,
-              status
-                  .get("status")
-                  .toString()
-                  .contains("Provided task definition does not contain any container definitions"));
+
           return status.get("failed").equals(true);
         },
         String.format("Failed to detect task failure, in %s seconds", TASK_RETRY_SECONDS),

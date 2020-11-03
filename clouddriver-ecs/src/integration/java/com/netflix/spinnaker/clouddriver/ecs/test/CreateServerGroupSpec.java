@@ -420,15 +420,31 @@ public class CreateServerGroupSpec extends EcsSpec {
         ArgumentCaptor.forClass(RegisterTaskDefinitionRequest.class);
     verify(mockECS).registerTaskDefinition(registerTaskDefArgs.capture());
     RegisterTaskDefinitionRequest seenTaskDefRequest = registerTaskDefArgs.getValue();
-    assertEquals(expectedServerGroupName, seenTaskDefRequest.getFamily());
-    assertEquals(1, seenTaskDefRequest.getContainerDefinitions().size());
+    assertEquals(
+        expectedServerGroupName,
+        seenTaskDefRequest.getFamily(),
+        "Expected server group name is ecs-integInputsEc2NoLoadBalancing. Server group name : "
+            + seenTaskDefRequest.getFamily());
+    assertEquals(
+        1,
+        seenTaskDefRequest.getContainerDefinitions().size(),
+        "Expected one container definition for service creations. Container definition size : "
+            + seenTaskDefRequest.getContainerDefinitions().size());
 
     ArgumentCaptor<CreateServiceRequest> createServiceArgs =
         ArgumentCaptor.forClass(CreateServiceRequest.class);
     verify(mockECS).createService(createServiceArgs.capture());
     CreateServiceRequest seenCreateServRequest = createServiceArgs.getValue();
-    assertEquals("EC2", seenCreateServRequest.getLaunchType());
-    assertEquals(expectedServerGroupName + "-v000", seenCreateServRequest.getServiceName());
+    assertEquals(
+        "EC2",
+        seenCreateServRequest.getLaunchType(),
+        "Expected launch type of a service is EC2. Launch type : "
+            + seenCreateServRequest.getLaunchType());
+    assertEquals(
+        expectedServerGroupName + "-v000",
+        seenCreateServRequest.getServiceName(),
+        "Expected server group name is ecs-integInputsEc2NoLoadBalancing. Server group name : "
+            + seenCreateServRequest.getServiceName());
   }
 
   @DisplayName(
@@ -486,21 +502,50 @@ public class CreateServerGroupSpec extends EcsSpec {
         ArgumentCaptor.forClass(RegisterTaskDefinitionRequest.class);
     verify(mockECS).registerTaskDefinition(registerTaskDefArgs.capture());
     RegisterTaskDefinitionRequest seenTaskDefRequest = registerTaskDefArgs.getValue();
-    assertEquals(expectedServerGroupName, seenTaskDefRequest.getFamily());
-    assertEquals(1, seenTaskDefRequest.getContainerDefinitions().size());
+    assertEquals(
+        expectedServerGroupName,
+        seenTaskDefRequest.getFamily(),
+        "Expected server group name is ecs-integInputsEc2NoLoadBalancing. Server group name : "
+            + seenTaskDefRequest.getFamily());
+    assertEquals(
+        1,
+        seenTaskDefRequest.getContainerDefinitions().size(),
+        "Expected one container definition for service creations. Container definition size : "
+            + seenTaskDefRequest.getContainerDefinitions().size());
 
     ArgumentCaptor<CreateServiceRequest> createServiceArgs =
         ArgumentCaptor.forClass(CreateServiceRequest.class);
     verify(mockECS).createService(createServiceArgs.capture());
     CreateServiceRequest seenCreateServRequest = createServiceArgs.getValue();
-    assertEquals("EC2", seenCreateServRequest.getLaunchType());
-    assertEquals(expectedServerGroupName + "-v000", seenCreateServRequest.getServiceName());
-    assertEquals(80, seenCreateServRequest.getServiceRegistries().get(0).getContainerPort());
+    assertEquals(
+        "EC2",
+        seenCreateServRequest.getLaunchType(),
+        "Expected launch type of a service is EC2. Launch type : "
+            + seenCreateServRequest.getLaunchType());
+    assertEquals(
+        expectedServerGroupName + "-v000",
+        seenCreateServRequest.getServiceName(),
+        "Expected server group name is ecs-integInputsEc2NoLoadBalancing. Server group name : "
+            + seenCreateServRequest.getServiceName());
+    assertEquals(
+        80,
+        seenCreateServRequest.getServiceRegistries().get(0).getContainerPort(),
+        "Expected container port is 80. Container port : "
+            + seenCreateServRequest.getServiceRegistries().get(0).getContainerPort());
+    assertEquals(
+        80,
+        seenCreateServRequest.getServiceRegistries().get(0).getContainerPort(),
+        "Expected container port is 80. Container port : "
+            + seenCreateServRequest.getServiceRegistries().get(0).getContainerPort());
     assertEquals(
         "arn:aws:servicediscovery:us-west-2:910995322324:service/srv-ckeydmrhzmqh6yfz",
-        seenCreateServRequest.getServiceRegistries().get(0).getRegistryArn());
+        seenCreateServRequest.getServiceRegistries().get(0).getRegistryArn(),
+        "Expected service registry arn is arn:aws:servicediscovery:us-west-2:910995322324:service/srv-ckeydmrhzmqh6yfz. Service registry arn : "
+            + seenCreateServRequest.getServiceRegistries().get(0).getRegistryArn());
     assertEquals(
         true,
-        seenCreateServRequest.getServiceRegistries().get(0).getContainerName().contains("v000"));
+        seenCreateServRequest.getServiceRegistries().get(0).getContainerName().contains("v000"),
+        "Container name expected to contain v000. Container name : "
+            + seenCreateServRequest.getServiceRegistries().get(0).getContainerName());
   }
 }
