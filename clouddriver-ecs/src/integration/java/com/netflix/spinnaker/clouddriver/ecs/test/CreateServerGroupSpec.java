@@ -440,7 +440,7 @@ public class CreateServerGroupSpec extends EcsSpec {
     assertEquals(
         "EC2",
         seenCreateServRequest.getLaunchType(),
-        "Expected launch type of a service is EC2. Launch type : "
+        "Expected launch type of a service is EC2. Launch type: "
             + seenCreateServRequest.getLaunchType());
     assertEquals(
         expectedServerGroupName + "-v000",
