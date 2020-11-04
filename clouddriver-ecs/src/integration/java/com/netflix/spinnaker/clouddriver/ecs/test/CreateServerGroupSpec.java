@@ -424,13 +424,13 @@ public class CreateServerGroupSpec extends EcsSpec {
         expectedServerGroupName,
         seenTaskDefRequest.getFamily(),
         String.format(
-            "Expected server group name to be '%s' but saw '%s'",
+            "Expected server group name to be %s but saw %s",
             expectedServerGroupName, seenTaskDefRequest.getFamily()));
     assertEquals(
         2,
         seenTaskDefRequest.getContainerDefinitions().size(),
         String.format(
-            "Expected container definition size to be '%s' but saw '%s'",
+            "Expected container definition size to be %s but saw %s ",
             2, seenTaskDefRequest.getContainerDefinitions().size()));
 
     ArgumentCaptor<CreateServiceRequest> createServiceArgs =
