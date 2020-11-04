@@ -423,13 +423,15 @@ public class CreateServerGroupSpec extends EcsSpec {
     assertEquals(
         expectedServerGroupName,
         seenTaskDefRequest.getFamily(),
-        "Expected server group name is ecs-integInputsEc2NoLoadBalancing. Server group name : "
-            + seenTaskDefRequest.getFamily());
+        String.format(
+            "Expected server group name to be '%s' but saw '%s'",
+            expectedServerGroupName, seenTaskDefRequest.getFamily()));
     assertEquals(
-        1,
+        2,
         seenTaskDefRequest.getContainerDefinitions().size(),
-        "Expected one container definition for service creations. Container definition size : "
-            + seenTaskDefRequest.getContainerDefinitions().size());
+        String.format(
+            "Expected container definition size to be '%s' but saw '%s'",
+            2, seenTaskDefRequest.getContainerDefinitions().size()));
 
     ArgumentCaptor<CreateServiceRequest> createServiceArgs =
         ArgumentCaptor.forClass(CreateServiceRequest.class);
