@@ -1,46 +1,45 @@
-name: Integration Tests
+name: ECS Integ build
 
 on:
   push:
     branches:
-      - throwAwayBranch
-  pull_request:
+      - ecs-integ
+      - ecs-integ-failure
 
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Xmx6g -Xms6g
 
 jobs:
-  it-test:
+  ecs-integ-build:
+    # Only run this on this fork (for now).
+    if: startsWith(github.repository, 'paragbhingre/')
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    # Install Java 8 for cross-compilation support. Setting it up before
-    # Java 11 means it comes later in $PATH (because of how setup-java works)
-    - uses: actions/setup-java@v1
-      with:
-        java-version: 8
-    - uses: actions/setup-java@v1
-      with:
-        java-version: 11
-    - name: Cache on push
-      if: github.event_name == 'push'
-      uses: actions/cache@v2
-      with:
-        path: ~/.gradle
-        key: ${{ runner.os }}-cd-it-${{ github.sha }}
-        # Restore build outputs from the previous commit (if successful), if current commit hasn't run successfully yet
-        restore-keys: |
-          ${{ runner.os }}-cd-it-${{ github.event.before }}
-    - name: Cache on pull_request
-      if: github.event_name == 'pull_request'
-      uses: actions/cache@v2
-      with:
-        path: ~/.gradle
-        key: ${{ runner.os }}-cd-it-${{ github.event.pull_request.head.sha }}
-        restore-keys: |
-          ${{ runner.os }}-cd-it-${{ github.event.before }}
-    # Separating integration tests by provider allows to have separate logs
-    - name: Kubernetes Provider Integration Tests
-      run: ./gradlew --build-cache :clouddriver-kubernetes:integrationTest
-    - name: Amazon ECS Provider Integration Tests
-      run: ./gradlew --build-cache :clouddriver-ecs:integrationTest
+      - uses: actions/checkout@v2
+      # Install Java 8 for cross-compilation support. Setting it up before
+      # Java 11 means it comes later in $PATH (because of how setup-java works)
+      - uses: actions/setup-java@v1
+        with:
+          java-version: 8
+      - uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - uses: actions/cache@v1
+        with:
+          path: ~/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+      #- name: Configure AWS credentials
+        # run clouddriver against a real account until we can emulate AWS responses
+        #uses: aws-actions/configure-aws-credentials@v1
+        #with:
+          #aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          #aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          #aws-region: us-west-2
+
+      - name: Build
+        run: ./gradlew -PenableCrossCompilerPlugin=true build --stacktrace
+
+      - name: ECS Integ test run
+        run: ./gradlew --info integrationTest
