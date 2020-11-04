@@ -5,6 +5,7 @@ on:
     branches:
       - ecs-integ
       - ecs-integ-failure
+      - throwAwatBranch
 
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Xmx6g -Xms6g
@@ -42,4 +43,4 @@ jobs:
         run: ./gradlew -PenableCrossCompilerPlugin=true build --stacktrace
 
       - name: ECS Integ test run
-        run: ./gradlew --info integrationTest
+        run: ./gradlew --build-cache :clouddriver-ecs:integrationTest
