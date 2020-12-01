@@ -16,10 +16,17 @@
 
 package com.netflix.spinnaker.clouddriver.ecs.provider.view;
 
+import com.amazonaws.services.ecs.AmazonECS;
+import com.amazonaws.services.ecs.model.Cluster;
+import com.amazonaws.services.ecs.model.DescribeClustersRequest;
+import com.amazonaws.services.ecs.model.DescribeClustersResult;
 import com.netflix.spinnaker.cats.cache.Cache;
+import com.netflix.spinnaker.clouddriver.aws.security.AmazonClientProvider;
+import com.netflix.spinnaker.clouddriver.aws.security.NetflixAmazonCredentials;
 import com.netflix.spinnaker.clouddriver.ecs.cache.client.EcsClusterCacheClient;
 import com.netflix.spinnaker.clouddriver.ecs.cache.model.EcsCluster;
-import java.util.Collection;
+import com.netflix.spinnaker.credentials.CredentialsRepository;
+import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -27,13 +34,67 @@ import org.springframework.stereotype.Component;
 public class EcsClusterProvider {
 
   private EcsClusterCacheClient ecsClusterCacheClient;
+  private static final int EcsClusterDescriptionMaxSize = 100;
+  final CredentialsRepository<NetflixAmazonCredentials> credentialsRepository;
+  final AmazonClientProvider amazonClientProvider;
 
   @Autowired
-  public EcsClusterProvider(Cache cacheView) {
+  public EcsClusterProvider(
+      Cache cacheView,
+      CredentialsRepository<NetflixAmazonCredentials> credentialsRepository,
+      AmazonClientProvider amazonClientProvider) {
     this.ecsClusterCacheClient = new EcsClusterCacheClient(cacheView);
+    this.credentialsRepository = credentialsRepository;
+    this.amazonClientProvider = amazonClientProvider;
   }
 
   public Collection<EcsCluster> getAllEcsClusters() {
     return ecsClusterCacheClient.getAll();
+  }
+
+  public Collection<Cluster> getAllEcsClustersDescription(String account, String region) {
+    List<String> clusters = new ArrayList<>();
+    List<Cluster> response = new ArrayList<>();
+    int clusterCount = 0;
+
+    Collection<EcsCluster> ecsClusters = ecsClusterCacheClient.getAll();
+
+    if (ecsClusters.size() > 0) {
+      for (EcsCluster ecsCluster : ecsClusters) {
+        clusters.add(ecsCluster.getName());
+        clusterCount++;
+
+        if (clusterCount % EcsClusterDescriptionMaxSize == 0) {
+          AmazonECS client = getAmazonEcsClient(account, region);
+          DescribeClustersRequest describeClustersRequest =
+              new DescribeClustersRequest().withClusters(clusters);
+          DescribeClustersResult describeClustersResult =
+              client.describeClusters(describeClustersRequest);
+          for (Cluster cluster : describeClustersResult.getClusters()) {
+            response.add(cluster);
+          }
+          clusters.clear();
+        }
+      }
+      if (clusterCount % EcsClusterDescriptionMaxSize != 0) {
+        AmazonECS client = getAmazonEcsClient(account, region);
+        DescribeClustersRequest describeClustersRequest =
+            new DescribeClustersRequest().withClusters(clusters);
+        DescribeClustersResult describeClustersResult =
+            client.describeClusters(describeClustersRequest);
+        for (Cluster cluster : describeClustersResult.getClusters()) {
+          response.add(cluster);
+        }
+      }
+    }
+    return response;
+  }
+
+  private AmazonECS getAmazonEcsClient(String account, String region) {
+    NetflixAmazonCredentials credentials = credentialsRepository.getOne(account);
+    if (!(credentials instanceof NetflixAmazonCredentials)) {
+      throw new IllegalArgumentException("Invalid credentials: ${account}:${region}");
+    }
+    return amazonClientProvider.getAmazonEcs(credentials, region, false);
   }
 }
