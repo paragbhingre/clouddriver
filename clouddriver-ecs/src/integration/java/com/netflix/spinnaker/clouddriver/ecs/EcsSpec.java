@@ -17,11 +17,19 @@ package com.netflix.spinnaker.clouddriver.ecs;
 
 import static io.restassured.RestAssured.get;
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.amazonaws.services.ecs.AmazonECS;
+import com.amazonaws.services.ecs.model.*;
+import com.amazonaws.services.elasticloadbalancingv2.AmazonElasticLoadBalancing;
+import com.amazonaws.services.elasticloadbalancingv2.model.DescribeTargetGroupsRequest;
+import com.amazonaws.services.elasticloadbalancingv2.model.DescribeTargetGroupsResult;
+import com.amazonaws.services.elasticloadbalancingv2.model.TargetGroup;
 import com.netflix.spinnaker.cats.agent.DefaultCacheResult;
 import com.netflix.spinnaker.cats.cache.CacheData;
 import com.netflix.spinnaker.cats.cache.DefaultCacheData;
@@ -30,6 +38,7 @@ import com.netflix.spinnaker.cats.provider.ProviderCache;
 import com.netflix.spinnaker.cats.provider.ProviderRegistry;
 import com.netflix.spinnaker.clouddriver.Main;
 import com.netflix.spinnaker.clouddriver.aws.security.*;
+import com.netflix.spinnaker.clouddriver.aws.security.NetflixAmazonCredentials;
 import com.netflix.spinnaker.clouddriver.aws.security.config.CredentialsConfig;
 import com.netflix.spinnaker.clouddriver.aws.security.config.CredentialsLoader;
 import com.netflix.spinnaker.clouddriver.ecs.cache.Keys;
@@ -44,6 +53,7 @@ import java.util.*;
 import org.junit.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.runner.RunWith;
+import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -77,9 +87,15 @@ public class EcsSpec {
 
   @MockBean AmazonAccountsSynchronizer mockAccountsSyncer;
 
+  @Autowired AccountCredentialsRepository accountCredentialsRepository;
+
+  private AmazonECS mockECS = mock(AmazonECS.class);
+  private AmazonElasticLoadBalancing mockELB = mock(AmazonElasticLoadBalancing.class);
+
   @BeforeEach
   void Setup() {
-    NetflixAmazonCredentials mockNetflixAwsCreds = mock(NetflixAmazonCredentials.class);
+    NetflixAssumeRoleAmazonCredentials mockNetflixAwsCreds =
+        mock(NetflixAssumeRoleAmazonCredentials.class);
     when(mockAccountsSyncer.synchronize(
             any(CredentialsLoader.class),
             any(CredentialsConfig.class),
@@ -87,6 +103,71 @@ public class EcsSpec {
             any(DefaultAccountConfigurationProperties.class),
             any(CatsModule.class)))
         .thenReturn(Collections.singletonList(mockNetflixAwsCreds));
+
+    when(mockECS.describeServices(any(DescribeServicesRequest.class)))
+        .thenReturn(new DescribeServicesResult());
+    when(mockECS.registerTaskDefinition(any(RegisterTaskDefinitionRequest.class)))
+        .thenAnswer(
+            (Answer<RegisterTaskDefinitionResult>)
+                invocation -> {
+                  RegisterTaskDefinitionRequest request =
+                      (RegisterTaskDefinitionRequest) invocation.getArguments()[0];
+                  String testArn = "arn:aws:ecs:::task-definition/" + request.getFamily() + ":1";
+                  TaskDefinition taskDef = new TaskDefinition().withTaskDefinitionArn(testArn);
+                  return new RegisterTaskDefinitionResult().withTaskDefinition(taskDef);
+                });
+    when(mockECS.createService(any(CreateServiceRequest.class)))
+        .thenReturn(
+            new CreateServiceResult().withService(new Service().withServiceName("createdService")));
+
+    when(mockAwsProvider.getAmazonEcs(
+            any(NetflixAssumeRoleAmazonCredentials.class), anyString(), anyBoolean()))
+        .thenReturn(mockECS);
+
+    // mock ELB responses
+    when(mockELB.describeTargetGroups(any(DescribeTargetGroupsRequest.class)))
+        .thenAnswer(
+            (Answer<DescribeTargetGroupsResult>)
+                invocation -> {
+                  DescribeTargetGroupsRequest request =
+                      (DescribeTargetGroupsRequest) invocation.getArguments()[0];
+                  String testArn =
+                      "arn:aws:elasticloadbalancing:::targetgroup/"
+                          + request.getNames().get(0)
+                          + "/76tgredfc";
+                  TargetGroup testTg = new TargetGroup().withTargetGroupArn(testArn);
+
+                  return new DescribeTargetGroupsResult().withTargetGroups(testTg);
+                });
+
+    when(mockAwsProvider.getAmazonElasticLoadBalancingV2(
+            any(NetflixAmazonCredentials.class), anyString(), anyBoolean()))
+        .thenReturn(mockELB);
+  }
+
+  @Test
+  public void createServerGroup_InputsEc2LegacyTargetGroupTest()
+      throws IOException, InterruptedException {
+
+    // given
+    String url = getTestUrl("/ecs/ops/createServerGroup");
+    String requestBody = generateStringFromTestFile("/createServerGroup-inputs-ec2.json");
+    // String expectedServerGroupName = "ecs-integInputsEc2LegacyTargetGroup";
+    setEcsAccountCreds();
+    // when
+    String taskId =
+        given()
+            .contentType(ContentType.JSON)
+            .body(requestBody)
+            .when()
+            .post(url)
+            .then()
+            .statusCode(200)
+            .contentType(ContentType.JSON)
+            .body("id", notNullValue())
+            .body("resourceUri", containsString("/task/"))
+            .extract()
+            .path("id");
   }
 
   @Test
@@ -225,5 +306,38 @@ public class EcsSpec {
     dataMap.put(namespace, dataPoints);
 
     return new DefaultCacheResult(dataMap);
+  }
+
+  private void setEcsAccountCreds() {
+    AmazonCredentials.AWSRegion testRegion = new AmazonCredentials.AWSRegion(TEST_REGION, null);
+
+    NetflixAssumeRoleAmazonCredentials ecsCreds =
+        new NetflixAssumeRoleAmazonCredentials(
+            ECS_ACCOUNT_NAME,
+            "test",
+            "test",
+            "123456789012",
+            null,
+            true,
+            Collections.singletonList(testRegion),
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            "role/arn:aws:iam::000000000000:arn:aws-cn:iam:::000000000000:role/spin-managed-role",
+            null,
+            null);
+
+    accountCredentialsRepository.save(ECS_ACCOUNT_NAME, ecsCreds);
   }
 }
