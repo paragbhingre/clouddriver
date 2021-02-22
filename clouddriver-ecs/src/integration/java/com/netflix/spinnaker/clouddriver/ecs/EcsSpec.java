@@ -37,15 +37,19 @@ import com.netflix.spinnaker.cats.module.CatsModule;
 import com.netflix.spinnaker.cats.provider.ProviderCache;
 import com.netflix.spinnaker.cats.provider.ProviderRegistry;
 import com.netflix.spinnaker.clouddriver.Main;
+import com.netflix.spinnaker.clouddriver.artifacts.ArtifactDownloader;
 import com.netflix.spinnaker.clouddriver.aws.security.*;
 import com.netflix.spinnaker.clouddriver.aws.security.NetflixAmazonCredentials;
 import com.netflix.spinnaker.clouddriver.aws.security.config.CredentialsConfig;
 import com.netflix.spinnaker.clouddriver.aws.security.config.CredentialsLoader;
 import com.netflix.spinnaker.clouddriver.ecs.cache.Keys;
 import com.netflix.spinnaker.clouddriver.ecs.provider.EcsProvider;
+import com.netflix.spinnaker.clouddriver.ecs.security.NetflixAssumeRoleEcsCredentials;
 import com.netflix.spinnaker.clouddriver.security.AccountCredentialsRepository;
+import com.netflix.spinnaker.kork.artifacts.model.Artifact;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -87,22 +91,30 @@ public class EcsSpec {
 
   @MockBean AmazonAccountsSynchronizer mockAccountsSyncer;
 
+  @MockBean ArtifactDownloader mockArtifactDownloader;
+
   @Autowired AccountCredentialsRepository accountCredentialsRepository;
 
   private AmazonECS mockECS = mock(AmazonECS.class);
   private AmazonElasticLoadBalancing mockELB = mock(AmazonElasticLoadBalancing.class);
 
+  protected static final String TEST_ARTIFACTS_LOCATION = "src/integration/resources/testartifacts";
+
   @BeforeEach
   void Setup() {
-    NetflixAssumeRoleAmazonCredentials mockNetflixAwsCreds =
-        mock(NetflixAssumeRoleAmazonCredentials.class);
+    NetflixAssumeRoleEcsCredentials mockNetflixEcsCreds =
+        mock(NetflixAssumeRoleEcsCredentials.class);
+
+    when(mockAwsProvider.getAmazonEcs(
+            any(NetflixAmazonCredentials.class), anyString(), anyBoolean()))
+        .thenReturn(mockECS);
     when(mockAccountsSyncer.synchronize(
             any(CredentialsLoader.class),
             any(CredentialsConfig.class),
             any(AccountCredentialsRepository.class),
             any(DefaultAccountConfigurationProperties.class),
             any(CatsModule.class)))
-        .thenReturn(Collections.singletonList(mockNetflixAwsCreds));
+        .thenReturn(Collections.singletonList(mockNetflixEcsCreds));
 
     when(mockECS.describeServices(any(DescribeServicesRequest.class)))
         .thenReturn(new DescribeServicesResult());
@@ -143,6 +155,44 @@ public class EcsSpec {
     when(mockAwsProvider.getAmazonElasticLoadBalancingV2(
             any(NetflixAmazonCredentials.class), anyString(), anyBoolean()))
         .thenReturn(mockELB);
+  }
+
+  protected String generateStringFromTestArtifactFile(String path) throws IOException {
+    return new String(Files.readAllBytes(Paths.get(TEST_ARTIFACTS_LOCATION, path)));
+  }
+
+  @Test
+  public void createServerGroup_ArtifactsFARGATETgMappingsTest()
+      throws IOException, InterruptedException {
+
+    // given
+    String url = getTestUrl("/ecs/ops/createServerGroup");
+    String requestBody =
+        generateStringFromTestFile("/createServerGroup-artifact-FARGATE-targetGroupMappings.json");
+    String expectedServerGroupName = "ecs-integArtifactsFargateTgMappingsStack-detailTest-v000";
+    setEcsAccountCreds();
+    ByteArrayInputStream byteArrayInputStreamOfArtifactsForFargateType =
+        new ByteArrayInputStream(
+            generateStringFromTestArtifactFile(
+                    "/createServerGroup-artifact-Fargate-targetGroup-artifactFile.json")
+                .getBytes());
+
+    when(mockArtifactDownloader.download(any(Artifact.class)))
+        .thenReturn(byteArrayInputStreamOfArtifactsForFargateType);
+
+    String taskId =
+        given()
+            .contentType(ContentType.JSON)
+            .body(requestBody)
+            .when()
+            .post(url)
+            .then()
+            .statusCode(200)
+            .contentType(ContentType.JSON)
+            .body("id", notNullValue())
+            .body("resourceUri", containsString("/task/"))
+            .extract()
+            .path("id");
   }
 
   @Test
@@ -308,6 +358,39 @@ public class EcsSpec {
     return new DefaultCacheResult(dataMap);
   }
 
+  /* private void setEcsAccountCreds() {
+    AmazonCredentials.AWSRegion testRegion = new AmazonCredentials.AWSRegion(TEST_REGION, null);
+
+    NetflixAssumeRoleAmazonCredentials ecsCreds =
+        new NetflixAssumeRoleAmazonCredentials(
+            ECS_ACCOUNT_NAME,
+            "test",
+            "test",
+            "123456789012",
+            null,
+            true,
+            Collections.singletonList(testRegion),
+            null,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            false,
+            "arn:aws-cn:iam::000000000000:role/spin-managed-role",
+            null,
+            null);
+
+    accountCredentialsRepository.save(ECS_ACCOUNT_NAME, ecsCreds);
+  }*/
+
   private void setEcsAccountCreds() {
     AmazonCredentials.AWSRegion testRegion = new AmazonCredentials.AWSRegion(TEST_REGION, null);
 
@@ -334,7 +417,7 @@ public class EcsSpec {
             null,
             false,
             false,
-            "role/arn:aws:iam::000000000000:arn:aws-cn:iam:::000000000000:role/spin-managed-role",
+            "role/assumerole",
             null,
             null);
 

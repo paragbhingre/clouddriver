@@ -127,6 +127,8 @@ public class CreateServerGroupAtomicOperation
 
     AmazonCredentials credentials = getCredentials();
 
+    String ecsServiceRole = inferAssumedRoleArn(credentials);
+
     AmazonECS ecs = getAmazonEcsClient();
 
     EcsServerGroupNameResolver serverGroupNameResolver =
@@ -140,8 +142,6 @@ public class CreateServerGroupAtomicOperation
 
     ScalableTarget sourceTarget = getSourceScalableTarget();
     Service sourceService = getSourceService();
-
-    String ecsServiceRole = inferAssumedRoleArn(credentials);
 
     updateTaskStatus("Creating Amazon ECS Task Definition...");
     TaskDefinition taskDefinition = registerTaskDefinition(ecs, ecsServiceRole, newServerGroupName);
@@ -667,7 +667,11 @@ public class CreateServerGroupAtomicOperation
               + "please report this issue to the Spinnaker project on Github.");
     }
 
-    return String.format("arn:aws:iam::%s:%s", credentials.getAccountId(), role);
+    if (role.startsWith("arn:")) {
+      return role;
+    } else {
+      return String.format("arn:aws:iam::%s:%s", credentials.getAccountId(), role);
+    }
   }
 
   private GetRoleResult checkRoleTrustRelations(String roleName) {

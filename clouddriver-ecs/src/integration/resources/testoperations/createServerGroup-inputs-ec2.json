@@ -2,9 +2,9 @@
   "account": "ecs-account",
   "application": "ecs",
   "availabilityZones": {
-    "us-west-1": [
-      "us-west-1a",
-      "us-west-1c"
+    "cn-north-1": [
+      "cn-north-1a",
+      "cn-north-1c"
     ]
   },
   "capacity": {
